@@ -3,63 +3,118 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reporte de Emergencia - Sistema de Seguridad</title>
+<title>Reporte de Emergencia</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg,#667eea,#764ba2);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+.container{
+    background:white;
+    padding:30px;
+    border-radius:12px;
+    width:400px;
+}
+input,select,textarea{
+    width:100%;
+    margin-bottom:12px;
+    padding:8px;
+}
+button{
+    width:100%;
+    padding:12px;
+    background:#667eea;
+    color:white;
+    border:none;
+    cursor:pointer;
+}
+</style>
 </head>
 <body>
-<script>
-let selectedStatus = '';
 
-function selectStatus(status, btn) {
-    document.querySelectorAll('.status-btn').forEach(b => {
-        b.className = 'status-btn';
-    });
-    btn.classList.add('selected-' + status);
-    selectedStatus = status;
-    document.getElementById('statusError').style.display = 'none';
-}
+<div class="container">
+<h2>Reporte de Emergencia</h2>
+
+<form id="emergencyForm">
+
+<input type="text" id="name" placeholder="Nombre Completo" required>
+<input type="email" id="email" placeholder="Email Corporativo" required>
+
+<select id="department" required>
+<option value="">Departamento</option>
+<option>HVO</option>
+<option>Support</option>
+<option>CA</option>
+<option>Sales</option>
+<option>HR</option>
+<option>Otro</option>
+</select>
+
+<select id="location" required>
+<option value="">Ubicación</option>
+<option>Ciudad de México</option>
+<option>Otro</option>
+</select>
+
+<select id="status" required>
+<option value="">Estado</option>
+<option value="safe">A Salvo</option>
+<option value="help">Necesito Ayuda</option>
+<option value="danger">Emergencia</option>
+</select>
+
+<input type="tel" id="phone" placeholder="Teléfono">
+<textarea id="comments" placeholder="Comentarios"></textarea>
+
+<button type="submit">Enviar Reporte</button>
+
+</form>
+
+<div id="successMessage" style="display:none;">
+<h3>Reporte enviado correctamente</h3>
+</div>
+
+</div>
+
+<script>
 
 const API_URL = "https://script.google.com/macros/s/AKfycbxFlYYiGm0PRpY3hKn2yUMCRgiYpLZP409JBpl3Ke7QfiUsG7g9jNyQT2TSn0hpQ-Ye/exec";
 
-document.getElementById('emergencyForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+document.getElementById('emergencyForm').addEventListener('submit', function(e){
+e.preventDefault();
 
-    if (!selectedStatus) {
-        document.getElementById('statusError').style.display = 'block';
-        return;
-    }
+const report = {
+reportId: 'RPT-'+Date.now(),
+name: document.getElementById('name').value,
+email: document.getElementById('email').value,
+department: document.getElementById('department').value,
+status: document.getElementById('status').value,
+location: document.getElementById('location').value,
+phone: document.getElementById('phone').value,
+comments: document.getElementById('comments').value,
+timestamp: new Date().toISOString()
+};
 
-    const submitBtn = document.querySelector('.submit-btn');
-    submitBtn.textContent = 'Enviando...';
-    submitBtn.disabled = true;
-
-    const report = {
-        reportId: 'RPT-' + Date.now(),
-        name: document.getElementById('name').value,
-        email: document.getElementById('email').value,
-        department: document.getElementById('department').value,
-        status: selectedStatus,
-        location: document.getElementById('location').value,
-        phone: document.getElementById('phone').value,
-        comments: document.getElementById('comments').value,
-        timestamp: new Date().toISOString()
-    };
-
-    fetch(API_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(report)
-    })
-    .then(() => {
-        document.getElementById('emergencyForm').style.display = 'none';
-        document.getElementById('successMessage').style.display = 'block';
-    })
-    .catch(() => {
-        submitBtn.textContent = 'Enviar Reporte';
-        submitBtn.disabled = false;
-        alert('Error al enviar. Por favor intenta de nuevo.');
-    });
+fetch(API_URL,{
+method:'POST',
+mode:'no-cors',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify(report)
+}).then(()=>{
+document.getElementById('emergencyForm').style.display='none';
+document.getElementById('successMessage').style.display='block';
+}).catch(()=>{
+alert('Error al enviar');
 });
+
+});
+
 </script>
+
 </body>
 </html>
