@@ -1,32 +1,445 @@
-<script>
-let currentFilter = 'all';
-let allReports = [];
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reporte de Emergencia</title>
+  <style>
+    :root{
+      --bg1:#667eea;
+      --bg2:#764ba2;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --shadow: 0 20px 60px rgba(0,0,0,.22);
+      --radius: 20px;
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFlYYiGm0PRpY3hKn2yUMCRgiYpLZP409JBpl3Ke7QfiUsG7g9jNyQT2TSn0hpQ-Ye/exec";
+      --safe:#10b981;
+      --safeBg:#d1fae5;
 
-function loadReports() {
-    const container = document.getElementById('reportsContent');
-    container.innerHTML = '<div>Cargando reportes...</div>';
-    
-    fetch(SCRIPT_URL)
-        .then(r => r.json())
-        .then(data => {
-            allReports = data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            updateStats();
-            applyFilters();
-        })
-        .catch(() => {
-            container.innerHTML = '<div>Error al cargar reportes</div>';
+      --help:#f59e0b;
+      --helpBg:#fef3c7;
+
+      --danger:#ef4444;
+      --dangerBg:#fee2e2;
+
+      --primary:#667eea;
+      --primary2:#764ba2;
+    }
+
+    *{ box-sizing:border-box; margin:0; padding:0; }
+
+    body{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, Cantarell, sans-serif;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      background: radial-gradient(1200px 600px at 20% 10%, rgba(255,255,255,.25), transparent 60%),
+                  radial-gradient(900px 500px at 90% 40%, rgba(255,255,255,.18), transparent 55%),
+                  linear-gradient(135deg, var(--bg1), var(--bg2));
+    }
+
+    .container{
+      width:100%;
+      max-width: 520px;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 34px 34px 28px;
+      position: relative;
+      overflow:hidden;
+    }
+
+    .container:before{
+      content:"";
+      position:absolute;
+      inset:-2px -2px auto -2px;
+      height: 110px;
+      background: linear-gradient(135deg, rgba(102,126,234,.22), rgba(118,75,162,.18));
+      border-bottom: 1px solid rgba(17,24,39,.06);
+    }
+
+    .header{
+      position: relative;
+      text-align:center;
+      margin-bottom: 22px;
+      padding-top: 6px;
+    }
+
+    .icon{
+      font-size: 54px;
+      line-height:1;
+      margin-bottom: 8px;
+      filter: drop-shadow(0 8px 18px rgba(0,0,0,.15));
+    }
+
+    h1{
+      color: var(--text);
+      font-size: 28px;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+
+    .subtitle{
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    form{ margin-top: 18px; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    label{
+      display:block;
+      font-size: 13px;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+
+    .required{ color: var(--danger); }
+
+    input, select, textarea{
+      width:100%;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 15px;
+      outline:none;
+      transition: .2s ease;
+      background: #fff;
+      color: var(--text);
+    }
+
+    input:focus, select:focus, textarea:focus{
+      border-color: rgba(102,126,234,.9);
+      box-shadow: 0 0 0 4px rgba(102,126,234,.12);
+    }
+
+    textarea{
+      min-height: 96px;
+      resize: vertical;
+    }
+
+    .status-wrap{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .status-btn{
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 10px;
+      background:#fff;
+      cursor:pointer;
+      transition: .2s ease;
+      text-align:center;
+      user-select:none;
+      position:relative;
+    }
+
+    .status-btn:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(0,0,0,.08);
+      border-color: rgba(102,126,234,.55);
+    }
+
+    .status-icon{
+      font-size: 26px;
+      margin-bottom: 6px;
+    }
+
+    .status-label{
+      font-weight: 800;
+      font-size: 12.5px;
+      color: #374151;
+      letter-spacing: .01em;
+    }
+
+    .status-btn.selected-safe{
+      border-color: var(--safe);
+      background: var(--safeBg);
+    }
+    .status-btn.selected-safe .status-label{ color: #065f46; }
+
+    .status-btn.selected-help{
+      border-color: var(--help);
+      background: var(--helpBg);
+    }
+    .status-btn.selected-help .status-label{ color: #92400e; }
+
+    .status-btn.selected-danger{
+      border-color: var(--danger);
+      background: var(--dangerBg);
+    }
+    .status-btn.selected-danger .status-label{ color: #991b1b; }
+
+    .error{
+      display:none;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .actions{
+      margin-top: 14px;
+    }
+
+    .submit{
+      width:100%;
+      border:none;
+      border-radius: 14px;
+      padding: 14px 16px;
+      background: linear-gradient(135deg, var(--primary), var(--primary2));
+      color:#fff;
+      font-size: 16px;
+      font-weight: 900;
+      cursor:pointer;
+      transition:.2s ease;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      letter-spacing: .01em;
+    }
+
+    .submit:hover{ opacity:.95; transform: translateY(-1px); }
+    .submit:disabled{ opacity:.7; cursor:not-allowed; transform:none; }
+
+    .spinner{
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      border: 3px solid rgba(255,255,255,.35);
+      border-top-color:#fff;
+      animation: spin .9s linear infinite;
+      display:none;
+    }
+    @keyframes spin{ to { transform: rotate(360deg); } }
+
+    .success{
+      display:none;
+      text-align:center;
+      padding: 22px 10px 8px;
+    }
+    .success .big{
+      font-size: 70px;
+      margin-bottom: 10px;
+    }
+    .success h2{
+      color: var(--safe);
+      font-size: 22px;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .success p{
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+      margin-bottom: 14px;
+    }
+    .again{
+      border: 2px solid rgba(102,126,234,.35);
+      background: #fff;
+      color: #374151;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 800;
+      cursor:pointer;
+    }
+    .again:hover{
+      border-color: rgba(102,126,234,.7);
+      box-shadow: 0 10px 22px rgba(0,0,0,.08);
+    }
+
+    .footnote{
+      margin-top: 14px;
+      text-align:center;
+      color: rgba(255,255,255,.85);
+      font-size: 12px;
+      max-width: 520px;
+    }
+
+    @media (max-width:520px){
+      .container{ padding: 26px 20px 22px; }
+      .status-wrap{ grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <div>
+    <div class="container">
+      <div class="header">
+        <div class="icon">🚨</div>
+        <h1>Reporte de Emergencia</h1>
+        <div class="subtitle">Por favor reporta tu estado actual</div>
+      </div>
+
+      <form id="emergencyForm">
+        <div class="grid">
+          <div>
+            <label>Nombre Completo <span class="required">*</span></label>
+            <input id="name" type="text" placeholder="Tu nombre completo" required />
+          </div>
+
+          <div>
+            <label>Email Corporativo <span class="required">*</span></label>
+            <input id="email" type="email" placeholder="tu.email@empresa.com" required />
+          </div>
+
+          <div>
+            <label>Departamento <span class="required">*</span></label>
+            <select id="department" required>
+              <option value="">Selecciona tu departamento</option>
+              <option value="HVO">HVO</option>
+              <option value="Support">Support</option>
+              <option value="CA">CA</option>
+              <option value="Sales">Sales</option>
+              <option value="HR">HR</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Estado Actual <span class="required">*</span></label>
+            <div class="status-wrap">
+              <button type="button" class="status-btn" onclick="selectStatus('safe', this)">
+                <div class="status-icon">✅</div>
+                <div class="status-label">A Salvo</div>
+              </button>
+              <button type="button" class="status-btn" onclick="selectStatus('help', this)">
+                <div class="status-icon">⚠️</div>
+                <div class="status-label">Necesito Ayuda</div>
+              </button>
+              <button type="button" class="status-btn" onclick="selectStatus('danger', this)">
+                <div class="status-icon">🆘</div>
+                <div class="status-label">Emergencia</div>
+              </button>
+            </div>
+            <div class="error" id="statusError">Por favor selecciona tu estado actual</div>
+          </div>
+
+          <div>
+            <label>Ubicación Actual <span class="required">*</span></label>
+            <select id="location" required>
+              <option value="">Selecciona tu ubicación</option>
+              <option value="Ciudad de México">Ciudad de México</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Número de Contacto</label>
+            <input id="phone" type="tel" placeholder="Tu número de teléfono" />
+          </div>
+
+          <div>
+            <label>Comentarios Adicionales</label>
+            <textarea id="comments" placeholder="Información adicional que consideres importante..."></textarea>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="submit" id="submitBtn" type="submit">
+            <span class="spinner" id="spinner"></span>
+            <span id="submitText">Enviar Reporte</span>
+          </button>
+        </div>
+      </form>
+
+      <div class="success" id="successMessage">
+        <div class="big">✅</div>
+        <h2>Reporte Enviado</h2>
+        <p>Tu reporte se registró correctamente. Gracias por mantenernos informados.</p>
+        <button class="again" type="button" onclick="resetForm()">Enviar otro reporte</button>
+      </div>
+    </div>
+
+    <div class="footnote">
+      Tip: Si hiciste cambios en GitHub, refresca con <b>Cmd + Shift + R</b> para evitar caché.
+    </div>
+  </div>
+
+  <script>
+    // ✅ TU WEB APP URL (Google Apps Script)
+    const API_URL = "https://script.google.com/macros/s/AKfycbxFlYYiGm0PRpY3hKn2yUMCRgiYpLZP409JBpl3Ke7QfiUsG7g9jNyQT2TSn0hpQ-Ye/exec";
+
+    let selectedStatus = "";
+
+    function selectStatus(status, btn){
+      document.querySelectorAll(".status-btn").forEach(b => b.className = "status-btn");
+      btn.classList.add("selected-" + status);
+      selectedStatus = status;
+      document.getElementById("statusError").style.display = "none";
+    }
+
+    function setSending(isSending){
+      const submitBtn = document.getElementById("submitBtn");
+      const spinner = document.getElementById("spinner");
+      const text = document.getElementById("submitText");
+      submitBtn.disabled = isSending;
+      spinner.style.display = isSending ? "inline-block" : "none";
+      text.textContent = isSending ? "Enviando..." : "Enviar Reporte";
+    }
+
+    function resetForm(){
+      document.getElementById("emergencyForm").reset();
+      selectedStatus = "";
+      document.querySelectorAll(".status-btn").forEach(b => b.className = "status-btn");
+      document.getElementById("successMessage").style.display = "none";
+      document.getElementById("emergencyForm").style.display = "block";
+      setSending(false);
+      document.getElementById("statusError").style.display = "none";
+    }
+
+    document.getElementById("emergencyForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      if(!selectedStatus){
+        document.getElementById("statusError").style.display = "block";
+        return;
+      }
+
+      setSending(true);
+
+      const report = {
+        reportId: "RPT-" + Date.now(),
+        name: document.getElementById("name").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        department: document.getElementById("department").value,
+        status: selectedStatus,
+        location: document.getElementById("location").value,
+        phone: document.getElementById("phone").value.trim(),
+        comments: document.getElementById("comments").value.trim(),
+        timestamp: new Date().toISOString()
+      };
+
+      try{
+        // ✅ Importante: SIN headers JSON para evitar preflight CORS con Apps Script.
+        // Apps Script seguirá leyendo el string JSON con JSON.parse(e.postData.contents).
+        await fetch(API_URL, {
+          method: "POST",
+          mode: "no-cors",
+          body: JSON.stringify(report)
         });
-}
 
-function updateStats() {
-    document.getElementById('safeCount').textContent   = allReports.filter(r => r.status === 'safe').length;
-    document.getElementById('helpCount').textContent   = allReports.filter(r => r.status === 'help').length;
-    document.getElementById('dangerCount').textContent = allReports.filter(r => r.status === 'danger').length;
-    document.getElementById('totalCount').textContent  = allReports.length;
-}
-
-setInterval(loadReports, 30000);
-loadReports();
-</script>
+        document.getElementById("emergencyForm").style.display = "none";
+        document.getElementById("successMessage").style.display = "block";
+      }catch(err){
+        alert("Error al enviar. Intenta de nuevo.");
+        setSending(false);
+      }
+    });
+  </script>
+</body>
+</html>
